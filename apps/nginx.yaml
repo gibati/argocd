@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:latest
+        image: nginx:1.25-alpine
         ports:
         - containerPort: 80
         resources:
@@ -29,12 +29,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-teste-lb
+  name: nginx-teste
   namespace: apps
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: nlb   # ou classic/alb se quiser ALB
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: nginx-teste
   ports:
