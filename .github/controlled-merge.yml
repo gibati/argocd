@@ -1,0 +1,53 @@
+name: Controlled Merge by Change
+
+on:
+  workflow_dispatch:
+    inputs:
+      change_id:
+        description: 'Change Number (ex: CHG0012345)'
+        required: true
+      pr_number:
+        description: 'Pull Request Number'
+        required: true
+
+jobs:
+  validate-and-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Validate Change in ServiceNow
+        run: |
+          RESPONSE=$(curl -s -u $SN_USER:$SN_PASS \
+          "https://INSTANCE.service-now.com/api/now/table/change_request?sysparm_query=number=${{ github.event.inputs.change_id }}")
+
+          echo "ServiceNow Response:"
+          echo $RESPONSE
+
+          STATE=$(echo $RESPONSE | jq -r '.result[0].state')
+          START=$(echo $RESPONSE | jq -r '.result[0].start_date')
+          END=$(echo $RESPONSE | jq -r '.result[0].end_date')
+
+          NOW=$(date -u +"%Y-%m-%d %H:%M:%S")
+
+          echo "State: $STATE"
+          echo "Now: $NOW"
+          echo "Window: $START → $END"
+
+          if [ "$STATE" != "-1" ]; then
+            echo "Change not in Implement state."
+            exit 1
+          fi
+
+          if [[ "$NOW" < "$START" || "$NOW" > "$END" ]]; then
+            echo "Outside change window."
+            exit 1
+          fi
+
+      - name: Merge Pull Request
+        run: |
+          gh pr merge ${{ github.event.inputs.pr_number }} --merge --admin
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
