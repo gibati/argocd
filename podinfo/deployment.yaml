@@ -22,7 +22,7 @@ spec:
         - name: PODINFO_UI_COLOR
           value: "#34577c"
         - name: PODINFO_UI_MESSAGE
-          value: "v1.0.0"
+          value: "v1.0.1"
         resources:
           requests:
             cpu: 50m
