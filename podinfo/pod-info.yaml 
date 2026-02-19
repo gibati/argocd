@@ -5,6 +5,7 @@ metadata:
   namespace: argocd
 spec:
   project: default
+
   source:
     repoURL: https://stefanprodan.github.io/podinfo
     chart: podinfo
@@ -16,9 +17,11 @@ spec:
         image:
           tag: 6.6.3
 
-        ui:
-          color: "#0000ff"
-          message: "version 1.0.0"
+        extraEnv:
+          - name: PODINFO_UI_COLOR
+            value: "#0000ff"
+          - name: PODINFO_UI_MESSAGE
+            value: "version 1.0.0"
 
         service:
           type: ClusterIP
