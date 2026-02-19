@@ -9,20 +9,14 @@ spec:
   source:
     repoURL: https://stefanprodan.github.io/podinfo
     chart: podinfo
-    targetRevision: 6.6.3
+    targetRevision: "*"
     helm:
       values: |
         replicaCount: 1
 
-        image:
-          tag: 6.6.3
-
         ui:
           color: "#ffff00"
           message: "version 1.0.0"
-
-        service:
-          type: ClusterIP
 
   destination:
     server: https://kubernetes.default.svc
