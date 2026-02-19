@@ -10,4 +10,4 @@ spec:
   ports:
     - port: 9898
       targetPort: 9898
-      nodePort: 9898
+      nodePort: 30080
