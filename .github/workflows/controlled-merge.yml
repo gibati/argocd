@@ -30,6 +30,10 @@ jobs:
           echo "Change ID: ${{ github.event.inputs.change_id }}"
           echo "======================================"
 
+
+echo testeeeeeeeeeeeeeeeeeeeeeeeeee
+echo "$SN_USER:$SN_PASS"
+echo testeeeeeeeeeeeeee
           RESPONSE=$(curl -s -u "$SN_USER:$SN_PASS" \
           "https://dev306695.service-now.com/api/now/table/change_request?sysparm_query=number=${{ github.event.inputs.change_id }}")
 
@@ -43,7 +47,7 @@ jobs:
             exit 1
           fi
 
-          STATE=$(echo "$RESPONSE" | jq -r '.result[0].state' | xargs)
+          STATE=$(echo "$RESPONSE" | jq -r '.result[0].state')
           START=$(echo "$RESPONSE" | jq -r '.result[0].start_date')
           END=$(echo "$RESPONSE" | jq -r '.result[0].end_date')
 
