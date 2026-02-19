@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CLUSTER_NAME="minelsos-cluster"
-NODEGROUP_NAME="cheap-ng-spot"
+NODEGROUP_NAME="cheap-ng-spot-new"
 
 echo "Desligando Node Group $NODEGROUP_NAME no cluster $CLUSTER_NAME..."
 aws eks update-nodegroup-config \

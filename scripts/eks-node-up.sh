@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CLUSTER_NAME="minelsos-cluster"
-NODEGROUP_NAME="cheap-ng-spot"
+NODEGROUP_NAME="cheap-ng-spot-new"
 NODEGROUP_MIN="0"
 NODEGROUP_MAX="2"
 NODEGROUP_DESIRED="2"
