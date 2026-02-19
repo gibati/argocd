@@ -4,9 +4,10 @@ metadata:
   name: podinfo
   namespace: apps
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: podinfo
   ports:
     - port: 9898
       targetPort: 9898
+      nodePort: 9898
