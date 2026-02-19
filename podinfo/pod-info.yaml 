@@ -17,11 +17,9 @@ spec:
         image:
           tag: 6.6.3
 
-        extraEnv:
-          - name: PODINFO_UI_COLOR
-            value: "#0000ff"
-          - name: PODINFO_UI_MESSAGE
-            value: "version 1.0.0"
+        ui:
+          color: "#ffff00"
+          message: "version 1.0.0"
 
         service:
           type: ClusterIP
