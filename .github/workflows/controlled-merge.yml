@@ -1,0 +1,97 @@
+name: Controlled Merge by ServiceNow Change
+
+on:
+  workflow_dispatch:
+    inputs:
+      change_id:
+        description: 'Change Number (ex: CHG0012345)'
+        required: true
+      pr_number:
+        description: 'Pull Request Number (ex: 12)'
+        required: true
+
+jobs:
+  validate-and-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Validate Change in ServiceNow
+        env:
+          SN_USER: ${{ secrets.SN_USER }}
+          SN_PASS: ${{ secrets.SN_PASS }}
+        run: |
+          echo "======================================"
+          echo "Validating Change in ServiceNow..."
+          echo "Change ID: ${{ github.event.inputs.change_id }}"
+          echo "======================================"
+
+          RESPONSE=$(curl -s -u "$SN_USER:$SN_PASS" \
+          "https://dev306695.service-now.com/api/now/table/change_request?sysparm_query=number=${{ github.event.inputs.change_id }}")
+
+          echo "Raw API Response:"
+          echo "$RESPONSE"
+
+          COUNT=$(echo "$RESPONSE" | jq '.result | length')
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "Change not found!"
+            exit 1
+          fi
+
+          STATE=$(echo "$RESPONSE" | jq -r '.result[0].state' | xargs)
+          START=$(echo "$RESPONSE" | jq -r '.result[0].start_date')
+          END=$(echo "$RESPONSE" | jq -r '.result[0].end_date')
+
+          echo "--------------------------------------"
+          echo "STATE RAW VALUE: >$STATE<"
+          echo "START DATE (UTC): $START"
+          echo "END DATE (UTC):   $END"
+          echo "--------------------------------------"
+
+          if [ "$STATE" != "-1" ]; then
+            echo "Change is NOT in IMPLEMENT state."
+            exit 1
+          fi
+
+          echo "Change is in IMPLEMENT state."
+
+          # =========================================================
+          # WINDOW VALIDATION (TEMPORARILY DISABLED FOR POC)
+          # =========================================================
+          #
+          # if [ -n "$START" ] && [ -n "$END" ]; then
+          #   START_TS=$(date -d "$START" +%s)
+          #   END_TS=$(date -d "$END" +%s)
+          #   NOW_TS=$(date -u +%s)
+          #
+          #   echo "NOW_TS=$NOW_TS"
+          #   echo "START_TS=$START_TS"
+          #   echo "END_TS=$END_TS"
+          #
+          #   if [ "$NOW_TS" -lt "$START_TS" ] || [ "$NOW_TS" -gt "$END_TS" ]; then
+          #     echo "Outside change window."
+          #     exit 1
+          #   fi
+          #
+          #   echo "Within change window."
+          # else
+          #   echo "Start or End date not defined. Skipping window validation."
+          # fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Merge Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          echo "======================================"
+          echo "Merging PR #${{ github.event.inputs.pr_number }}"
+          echo "======================================"
+
+          gh pr merge ${{ github.event.inputs.pr_number }} --merge --admin

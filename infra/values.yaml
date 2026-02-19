@@ -1,11 +1,9 @@
-global:
-  domain: argocd.local
+#global:
+#  domain: argocd.local
 
 server:
   service:
-    type: NodePort
-    nodePortHttp: 30080
-    nodePortHttps: 30443
+    type: ClusterIP
 
   resources:
     requests:
@@ -14,6 +12,11 @@ server:
     limits:
       cpu: 150m
       memory: 256Mi
+
+  insecure: true
+
+  extraArgs:
+    - --insecure
 
 controller:
   resources:
@@ -38,3 +41,27 @@ applicationSet:
 
 notifications:
   enabled: false
+
+configs:
+  cm:
+    # user sre = admin
+    accounts.sre: login
+    accounts.sre.enabled: "true"
+
+    # user SNOW
+    accounts.servicenow: apiKey
+    accounts.servicenow.enabled: "true"
+
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      # SRE com acesso total
+      g, sre, role:admin
+
+      # Role específica para ServiceNow
+      p, role:servicenow-role, applications, get, *, allow
+      p, role:servicenow-role, applications, sync, *, allow
+      p, role:servicenow-role, applications, create, *, allow
+      p, role:servicenow-role, applications, update, *, allow
+
+      g, servicenow, role:servicenow-role
