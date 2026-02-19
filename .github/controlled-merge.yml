@@ -1,9 +1,10 @@
-- name: Test ServiceNow connection
-  run: |
-    echo "Testing ServiceNow API..."
+name: Test Manual Workflow
 
-    RESPONSE=$(curl -s -u $SN_USER:$SN_PASS \
-    "https://dev306695.service-now.com/api/now/table/change_request?sysparm_limit=1")
+on:
+  workflow_dispatch:
 
-    echo "Response:"
-    echo $RESPONSE
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Workflow funcionando"
