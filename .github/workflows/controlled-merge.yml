@@ -83,6 +83,9 @@ jobs:
           #   echo "Start or End date not defined. Skipping window validation."
           # fi
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Merge Pull Request
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
