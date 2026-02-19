@@ -20,9 +20,9 @@ spec:
         - containerPort: 9898
         env:
         - name: PODINFO_UI_COLOR
-          value: "#ffff00"
+          value: "#34577c"
         - name: PODINFO_UI_MESSAGE
-          value: "v2.0.0"
+          value: "v3.0.0"
         resources:
           requests:
             cpu: 50m
