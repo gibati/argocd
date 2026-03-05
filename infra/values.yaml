@@ -1,6 +1,3 @@
-#global:
-#  domain: argocd.local
-
 server:
   service:
     type: ClusterIP
@@ -18,6 +15,7 @@ server:
   extraArgs:
     - --insecure
 
+
 controller:
   resources:
     requests:
@@ -28,24 +26,6 @@ controller:
       memory: 512Mi
 
 repoServer:
-  env:
-    - name: SERVICENOW_INSTANCE
-      value: "https://dev306695.service-now.com"
-
-    - name: SERVICENOW_USER
-      valueFrom:
-        secretKeyRef:
-          name: servicenow-creds
-          key: username
-
-    - name: SERVICENOW_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: servicenow-creds
-          key: password
-
-    - name: PATH
-      value: "/custom-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
   resources:
     requests:
@@ -55,126 +35,71 @@ repoServer:
       cpu: 150m
       memory: 256Mi
 
-  # (mantém seu bloco env que aponta para o secret servicenow-creds)  
-  initContainers:
-    - name: fetch-tools
-      image: alpine:3.19
-      command: ["/bin/sh","-c"]
-      args:
-        - |
-          set -e
-          apk add --no-cache ca-certificates
-
-          mkdir -p /custom-tools
-
-          wget -O /custom-tools/curl \
-            https://github.com/moparisthebest/static-curl/releases/latest/download/curl-amd64
-
-          chmod +x /custom-tools/curl
-      volumeMounts:
-        - name: custom-tools
-          mountPath: /custom-tools
-
-  volumeMounts:
-    - name: custom-tools
-      mountPath: /custom-tools
-
   volumes:
-    - name: custom-tools
-      emptyDir: {}
+    - name: cmp-plugin
+      configMap:
+        name: servicenow-plugin
+
+  extraContainers:
+    - name: servicenow-plugin
+      image: quay.io/argoproj/argocd:v3.3.0
+      command: ["/var/run/argocd/argocd-cmp-server"]
+
+      env:
+        - name: SERVICENOW_INSTANCE
+          value: "https://dev306695.service-now.com"
+
+        - name: SERVICENOW_USER
+          valueFrom:
+            secretKeyRef:
+              name: servicenow-creds
+              key: username
+
+        - name: SERVICENOW_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: servicenow-creds
+              key: password
+
+      volumeMounts:
+        - name: plugins
+          mountPath: /home/argocd/cmp-server/plugins
+
+        - name: cmp-plugin
+          mountPath: /home/argocd/cmp-server/config/plugin.yaml
+          subPath: plugin.yaml
+
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 150m
+      memory: 256Mi
 
 applicationSet:
   enabled: false
 
+
 notifications:
   enabled: false
 
+
 configs:
   cm:
-    # user sre = admin
     accounts.sre: login
     accounts.sre.enabled: "true"
 
-    # user SNOW
     accounts.servicenow: apiKey
     accounts.servicenow.enabled: "true"
-    configManagementPlugins: |
-      - name: servicenow-gated
-        generate:
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              set -euo pipefail
-
-              : "${SERVICENOW_INSTANCE?missing}"
-              : "${SERVICENOW_USER?missing}"
-              : "${SERVICENOW_PASSWORD?missing}"
-
-              REV="${ARGOCD_APP_REVISION:-unknown}"
-              APP="${ARGOCD_APP_NAME:-unknown}"
-
-              echo "[INFO] Validando CHG para app=${APP}, rev=${REV}"
-
-              # Ajuste os campos 'u_git_sha' e 'u_application' conforme o seu SNOW
-              # Exige state 'Scheduled' (pode incluir mais estados, se quiser)
-              QUERY="u_git_sha=${REV}^u_application=${APP}^state=4"
-              # Observação: em muitas implantações, 'state=4' corresponde a 'Scheduled'.
-              # Se sua instância usa string no 'state', troque por 'state=Scheduled'.
-
-              URL="${SERVICENOW_INSTANCE}/api/now/table/change_request?sysparm_query=${QUERY}&sysparm_limit=1&sysparm_fields=number,state,short_description,u_git_sha,u_application"
-
-              HTTP=$(curl -sS -u "${SERVICENOW_USER}:${SERVICENOW_PASSWORD}" \
-                -H "Accept: application/json" \
-                -o /tmp/sn.json -w "%{http_code}" "${URL}")
-
-              if [ "$HTTP" != "200" ]; then
-                echo "[ERROR] ServiceNow HTTP $HTTP" 1>&2
-                cat /tmp/sn.json || true
-                exit 1
-              fi
-
-              COUNT=$(jq '.result | length' /tmp/sn.json)
-              if [ "$COUNT" -lt 1 ]; then
-                echo "[ERROR] Nenhuma CHG 'Scheduled' encontrada para rev=${REV} e app=${APP}."
-                exit 1
-              fi
-
-              STATE=$(jq -r '.result[0].state' /tmp/sn.json)
-              NUMBER=$(jq -r '.result[0].number' /tmp/sn.json)
-              SHORT=$(jq -r '.result[0].short_description' /tmp/sn.json)
-
-              # Normaliza numéricos mais comuns
-              case "$STATE" in
-                1) STATE_STR="New" ;;
-                2) STATE_STR="Assess" ;;
-                3) STATE_STR="Authorize" ;;
-                4) STATE_STR="Scheduled" ;;
-                5) STATE_STR="Implement" ;;
-                6) STATE_STR="Review" ;;
-                7) STATE_STR="Closed" ;;
-                *) STATE_STR="$STATE" ;;
-              esac
-
-              if [ "$STATE_STR" != "Scheduled" ]; then
-                echo "[ERROR] CHG ${NUMBER} nao esta 'Scheduled' (estado atual: ${STATE_STR})."
-                exit 1
-              fi
-
-              echo "[SUCCESS] CHG ${NUMBER} em 'Scheduled'. Renderizando Helm."
-
-              # Renderiza Helm
-              helm template "${ARGOCD_APP_NAME}" "${ARGOCD_APP_SOURCE_PATH}" \
-                --include-crds \
-                --namespace "${ARGOCD_APP_NAMESPACE}"
 
 
   rbac:
     policy.default: role:readonly
     policy.csv: |
-      # SRE com acesso total
       g, sre, role:admin
 
-      # Role específica para ServiceNow
       p, role:servicenow-role, applications, get, *, allow
       p, role:servicenow-role, applications, sync, *, allow
       p, role:servicenow-role, applications, create, *, allow
