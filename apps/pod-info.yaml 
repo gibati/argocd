@@ -9,11 +9,13 @@ spec:
   source:
     repoURL: git@github.com:gibati/argocd.git
     targetRevision: HEAD
-    path: podinfo  
+    path: podinfo
+    plugin:
+      name: servicenow-gated
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: apps  
+    namespace: apps
 
   syncPolicy:
     automated:
