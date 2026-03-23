@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: servicenow-plugin
+  namespace: argocd
+data:
+  plugin.yaml: |
+    apiVersion: argoproj.io/v1alpha1
+    kind: ConfigManagementPlugin
+    metadata:
+      name: servicenow-gated
+    spec:
+      discover:
+        find:
+          command: ["sh","-c","ls *.yaml"]
+      generate:
+        command: ["/bin/sh","-c"]
+        args:
+          - |
+            set -euo pipefail
+
+            echo "[INFO] ServiceNow validation"
+
+            : "${SERVICENOW_INSTANCE?missing}"
+            : "${SERVICENOW_USER?missing}"
+            : "${SERVICENOW_PASSWORD?missing}"
+
+            REV="${ARGOCD_APP_REVISION:-unknown}"
+            APP="${ARGOCD_APP_NAME:-unknown}"
+
+            QUERY="u_git_sha=${REV}^u_application=${APP}^state=4"
+
+            URL="${SERVICENOW_INSTANCE}/api/now/table/change_request?sysparm_query=${QUERY}&sysparm_limit=1"
+
+            HTTP=$(curl -sS -u "${SERVICENOW_USER}:${SERVICENOW_PASSWORD}" \
+              -o /tmp/sn.json -w "%{http_code}" "${URL}")
+
+            if [ "$HTTP" != "200" ]; then
+              echo "ServiceNow error"
+              exit 1
+            fi
+
+            COUNT=$(grep -c '"number"' /tmp/sn.json || true)
+
+            if [ "$COUNT" -lt 1 ]; then
+              echo "No approved change"
+              exit 1
+            fi
+
+            echo "Change approved"
+
+            find . -name '*.yaml' -print0 | xargs -0 cat
