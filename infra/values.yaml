@@ -91,6 +91,19 @@ notifications:
 
 configs:
   cm:
+    url: http://localhost:8080
+
+    oidc.config: |
+      name: Keycloak
+      issuer: http://keycloak.keycloak.svc.cluster.local/realms/argocd
+      clientID: argocd
+      clientSecret: ""
+      requestedScopes: ["openid", "profile", "email"]
+      requestedIDTokenClaims:
+        roles:
+          essential: true
+
+
     # user sre = admin
     accounts.sre: login
     accounts.sre.enabled: "true"
@@ -167,9 +180,9 @@ configs:
                 --include-crds \
                 --namespace "${ARGOCD_APP_NAMESPACE}"
 
-
   rbac:
     policy.default: role:readonly
+    scopes: '[roles]'
     policy.csv: |
       # SRE com acesso total
       g, sre, role:admin
@@ -181,3 +194,7 @@ configs:
       p, role:servicenow-role, applications, update, *, allow
 
       g, servicenow, role:servicenow-role
+      g, gs_argocd_admin, role:admin
+      g, gs_argocd_ro, role:readonly
+
+      p, role:admin, *, *, *, allow
