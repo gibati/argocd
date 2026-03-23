@@ -1,10 +1,10 @@
 #!/bin/bash
 
 CLUSTER_NAME="minelsos-cluster"
-NODEGROUP_NAME="cheap-ng-spot-new"
+NODEGROUP_NAME="cheap-ng-spot-large2"
 NODEGROUP_MIN="0"
-NODEGROUP_MAX="2"
-NODEGROUP_DESIRED="2"
+NODEGROUP_MAX="1"
+NODEGROUP_DESIRED="1"
 
 echo "Ligando Node Group $NODEGROUP_NAME no cluster $CLUSTER_NAME..."
 aws eks update-nodegroup-config \
